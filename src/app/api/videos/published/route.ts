@@ -29,8 +29,9 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
       return true;
     }
     
-    // Fallback to environment variable
-    const validKeys = process.env.VALID_API_KEYS?.split(',') || [];
+    // HARDCODED FALLBACK: Since Amplify env vars aren't working with Next.js standalone
+    const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
+    const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
     const isValid = validKeys.includes(apiKey);
     
     if (isValid) {
@@ -44,8 +45,9 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
   } catch (error) {
     console.error('❌ Error validating API key:', error);
     
-    // Fallback to environment variable if DynamoDB fails
-    const validKeys = process.env.VALID_API_KEYS?.split(',') || [];
+    // HARDCODED FALLBACK: Since Amplify env vars aren't working with Next.js standalone
+    const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
+    const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
     return validKeys.includes(apiKey);
   }
 }
