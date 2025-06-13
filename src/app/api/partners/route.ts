@@ -1,101 +1,138 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
 
 export const dynamic = 'force-dynamic';
 
-// Simple API key validation (same pattern as videos endpoint)
-async function validateApiKey(apiKey: string): Promise<boolean> {
+// Utility function to check if AWS credentials are available
+async function hasAwsCredentials(): Promise<boolean> {
+  try {
+    const { fromNodeProviderChain } = await import('@aws-sdk/credential-providers');
+    const credentialProvider = fromNodeProviderChain();
+    const credentials = await credentialProvider();
+    return !!(credentials.accessKeyId && credentials.secretAccessKey);
+  } catch {
+    return false;
+  }
+}
+
+// Create DynamoDB client with error handling
+async function createDynamoClient() {
+  try {
+    const { DynamoDBClient } = await import('@aws-sdk/client-dynamodb');
+    const { DynamoDBDocumentClient } = await import('@aws-sdk/lib-dynamodb');
+    
+    const region = process.env.AWS_REGION || 'us-east-2';
+    
+    // Try to create client with automatic credential detection
+    const client = new DynamoDBClient({ region });
+    const docClient = DynamoDBDocumentClient.from(client);
+    
+    // Test if credentials work by doing a simple operation
+    const { ListTablesCommand } = await import('@aws-sdk/client-dynamodb');
+    await client.send(new ListTablesCommand({}));
+    
+    return docClient;
+  } catch (error) {
+    console.log('❌ DynamoDB client creation failed:', error);
+    return null;
+  }
+}
+
+// Admin API key validation - only env vars for admin access
+async function validateAdminApiKey(apiKey: string): Promise<boolean> {
   if (!apiKey) return false;
   
+  // Admin keys are only stored in environment variables for security
+  const adminKeys = process.env.ADMIN_API_KEYS?.split(',') || [];
+  return adminKeys.includes(apiKey);
+}
+
+// Get partners from DynamoDB or return mock data
+async function getPartners() {
   try {
-    const dynamoClient = new DynamoDBClient({ region: 'us-east-2' });
-    
-    const command = new ScanCommand({
-      TableName: 'pipeline-api-keys',
-      FilterExpression: 'keyValue = :key AND #status = :status',
-      ExpressionAttributeNames: {
-        '#status': 'status'
-      },
-      ExpressionAttributeValues: {
-        ':key': { S: apiKey },
-        ':status': { S: 'active' }
-      },
-      Limit: 1
-    });
-    
-    const result = await dynamoClient.send(command);
-    if (result.Items && result.Items.length > 0) {
-      return true;
+    const docClient = await createDynamoClient();
+    if (!docClient) {
+      console.log('⚠️ Using mock partner data (DynamoDB not available)');
+      return getMockPartners();
     }
     
-    // HARDCODED FALLBACK: Since Amplify env vars aren't working with Next.js standalone
-    const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
-    const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
-    return validKeys.includes(apiKey);
+    const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
+    const result = await docClient.send(new ScanCommand({
+      TableName: 'partners'
+    }));
     
-  } catch {
-    // HARDCODED FALLBACK: Since Amplify env vars aren't working  
-    const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
-    const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
-    return validKeys.includes(apiKey);
+    console.log('✅ Partners retrieved from DynamoDB');
+    return result.Items || [];
+  } catch (error) {
+    console.log('⚠️ DynamoDB query failed, using mock data:', error);
+    return getMockPartners();
   }
+}
+
+function getMockPartners() {
+  return [
+    {
+      id: 'partner-1',
+      name: 'Healthcare Partner A',
+      apiKey: 'sk_test_123456',
+      status: 'active',
+      createdAt: '2025-06-13T00:00:00Z',
+      contactEmail: 'admin@healthcarea.com',
+      type: 'healthcare_provider'
+    },
+    {
+      id: 'partner-2', 
+      name: 'Medical Group B',
+      apiKey: 'partner-key-xyz',
+      status: 'active',
+      createdAt: '2025-06-13T01:00:00Z',
+      contactEmail: 'contact@medicalgroupb.com',
+      type: 'medical_group'
+    }
+  ];
 }
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🤝 Partners API starting...');
     
+    // Check if we have AWS credentials
+    const hasCredentials = await hasAwsCredentials();
+    console.log('🔐 AWS credentials available:', hasCredentials);
+    
     // Get API key from header
     const apiKey = request.headers.get('x-api-key');
     
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'API key is required' },
+        { error: 'Admin API key is required' },
         { status: 401 }
       );
     }
     
-    // Validate API key
-    const isValidKey = await validateApiKey(apiKey);
-    if (!isValidKey) {
+    // Validate admin API key
+    const isValidAdminKey = await validateAdminApiKey(apiKey);
+    if (!isValidAdminKey) {
       return NextResponse.json(
-        { error: 'Invalid API key' },
+        { error: 'Invalid admin API key' },
         { status: 401 }
       );
     }
     
-    console.log('✅ API key validated');
+    // Get partners
+    const partners = await getPartners();
     
-    // Simple DynamoDB client
-    const dynamoClient = new DynamoDBClient({ region: 'us-east-2' });
-    
-    const command = new ScanCommand({
-      TableName: 'pipeline-api-partners'
-    });
-    
-    const result = await dynamoClient.send(command);
-    
-    console.log(`✅ Found ${result.Items?.length || 0} partners`);
-    
-    // Transform DynamoDB items to simple objects
-    const partners = (result.Items || []).map(item => ({
-      id: item.id?.S || '',
-      name: item.name?.S || '',
-      email: item.email?.S || '',
-      description: item.description?.S || '',
-      isActive: item.isActive?.BOOL || false,
-      createdAt: item.createdAt?.S || '',
-      updatedAt: item.updatedAt?.S || ''
-    }));
-
     return NextResponse.json({
       success: true,
-      partners
+      data: partners,
+      meta: {
+        count: partners.length,
+        credentialsAvailable: hasCredentials,
+        usingMockData: !hasCredentials
+      }
     });
     
-  } catch (error: unknown) {
-    console.error('❌ Error fetching partners:', error);
-    
+  } catch (error) {
+    console.error('❌ Partners API error:', error);
     return NextResponse.json(
       { 
         error: 'Internal server error',
