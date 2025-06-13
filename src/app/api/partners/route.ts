@@ -33,7 +33,7 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
     const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
     return validKeys.includes(apiKey);
     
-  } catch (error) {
+  } catch {
     // HARDCODED FALLBACK: Since Amplify env vars aren't working  
     const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
     const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
