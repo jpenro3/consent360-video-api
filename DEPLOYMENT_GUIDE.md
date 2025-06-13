@@ -48,3 +48,27 @@ curl -H "x-api-key: ak_zgeskc62jci" https://your-app.amplifyapp.com/api/partners
 ✅ Ready for production  
 
 This should work immediately since it uses the exact pattern that was working!
+
+## Fixed Amplify YAML Configuration:
+
+```yaml
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+```
+
+This removes the backend build phase that's causing the `ampx generate` error.
