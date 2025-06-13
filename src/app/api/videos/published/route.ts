@@ -1,55 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { DynamoDBClient, ScanCommand } from '@aws-sdk/client-dynamodb';
 
 export const dynamic = 'force-dynamic';
 
-// Simple API key validation - check DynamoDB first, fallback to env vars
+// Simple API key validation using ONLY environment variables
 async function validateApiKey(apiKey: string): Promise<boolean> {
   if (!apiKey) return false;
   
-  try {
-    const dynamoClient = new DynamoDBClient({ region: 'us-east-2' });
-    
-    const command = new ScanCommand({
-      TableName: 'pipeline-api-keys',
-      FilterExpression: 'keyValue = :key AND #status = :status',
-      ExpressionAttributeNames: {
-        '#status': 'status'
-      },
-      ExpressionAttributeValues: {
-        ':key': { S: apiKey },
-        ':status': { S: 'active' }
-      },
-      Limit: 1
-    });
-    
-    const result = await dynamoClient.send(command);
-    if (result.Items && result.Items.length > 0) {
-      console.log('✅ API key found in DynamoDB');
-      return true;
-    }
-    
-    // HARDCODED FALLBACK: Since Amplify env vars aren't working with Next.js standalone
-    const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
-    const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
-    const isValid = validKeys.includes(apiKey);
-    
-    if (isValid) {
-      console.log('✅ API key found in environment variable');
-    } else {
-      console.log('❌ API key not found');
-    }
-    
-    return isValid;
-    
-  } catch (error) {
-    console.error('❌ Error validating API key:', error);
-    
-    // HARDCODED FALLBACK: Since Amplify env vars aren't working with Next.js standalone
-    const hardcodedValidKeys = ['sk_test_123456', 'partner-key-xyz', 'ak_zgeskc62jci'];
-    const validKeys = process.env.VALID_API_KEYS?.split(',') || hardcodedValidKeys;
-    return validKeys.includes(apiKey);
-  }
+  // Use environment variables only (no DynamoDB)
+  const validKeys = process.env.VALID_API_KEYS?.split(',') || [];
+  return validKeys.includes(apiKey);
 }
 
 export async function GET(request: NextRequest) {
@@ -66,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Validate API key
+    // Validate API key using environment variables only
     const isValidKey = await validateApiKey(apiKey);
     if (!isValidKey) {
       return NextResponse.json(
@@ -77,73 +36,52 @@ export async function GET(request: NextRequest) {
     
     console.log('✅ API key validated');
     
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
-    
-    console.log(`Fetching videos (limit: ${limit}, offset: ${offset})`);
-    
-    // Simple DynamoDB client
-    const dynamoClient = new DynamoDBClient({ region: 'us-east-2' });
-    
-    // Scan videos table for published videos
-    const command = new ScanCommand({
-      TableName: 'pipeline-videos',
-      FilterExpression: '#status = :published',
-      ExpressionAttributeNames: {
-        '#status': 'status'
+    // Return mock data for now (bypass DynamoDB completely)
+    const mockVideos = [
+      {
+        id: 'video-1',
+        title: 'Sample Consent Video',
+        description: 'Mock video for testing',
+        videoUrl: 'https://example.com/video1.mp4',
+        thumbnailUrl: 'https://example.com/thumb1.jpg',
+        duration: 120,
+        createdAt: '2025-06-13T00:00:00Z',
+        status: 'published',
+        specialty: 'general',
+        videoType: 'consent',
+        language: 'en',
+        presenter: 'Dr. Smith'
       },
-      ExpressionAttributeValues: {
-        ':published': { S: 'published' }
-      },
-      Limit: Math.min(limit + offset, 100) // Cap at 100 for performance
-    });
+      {
+        id: 'video-2',
+        title: 'Another Test Video',
+        description: 'Another mock video',
+        videoUrl: 'https://example.com/video2.mp4',
+        thumbnailUrl: 'https://example.com/thumb2.jpg',
+        duration: 180,
+        createdAt: '2025-06-13T00:00:00Z',
+        status: 'published',
+        specialty: 'cardiology',
+        videoType: 'procedure',
+        language: 'en',
+        presenter: 'Dr. Johnson'
+      }
+    ];
     
-    const result = await dynamoClient.send(command);
-    
-    if (!result.Items) {
-      return NextResponse.json({
-        videos: [],
-        pagination: { total: 0, limit, offset, hasNext: false }
-      });
-    }
-    
-    console.log(`✅ Found ${result.Items.length} videos from DynamoDB`);
-    
-    // Convert DynamoDB items to simple objects
-    const allVideos = result.Items.map(item => ({
-      id: item.id?.S || '',
-      title: item.title?.S || '',
-      description: item.description?.S || '',
-      videoUrl: item.videoUrl?.S || item.video_url?.S || item.url?.S || '',
-      thumbnailUrl: item.thumbnailUrl?.S || item.thumbnail_url?.S || '',
-      duration: parseInt(item.duration?.N || '0', 10),
-      createdAt: item.createdAt?.S || item.created_at?.S || '',
-      status: item.status?.S || '',
-      specialty: item.specialty?.S || item.specialtyId?.S || '',
-      videoType: item.videoType?.S || item.type?.S || 'consent',
-      language: item.language?.S || 'en',
-      presenter: item.presenter?.S || 'Generic'
-    }));
-    
-    // Apply pagination
-    const videos = allVideos.slice(offset, offset + limit);
-    
-    console.log(`📤 Returning ${videos.length} videos`);
+    console.log(`📤 Returning ${mockVideos.length} mock videos`);
     
     return NextResponse.json({
-      videos,
+      videos: mockVideos,
       pagination: {
-        total: allVideos.length,
-        limit,
-        offset,
-        hasNext: offset + limit < allVideos.length
+        total: mockVideos.length,
+        limit: 50,
+        offset: 0,
+        hasNext: false
       }
     });
     
-  } catch (error: unknown) {
-    console.error('❌ Error fetching videos:', error);
+  } catch (error) {
+    console.error('❌ Error in videos API:', error);
     
     return NextResponse.json(
       { 
