@@ -20,7 +20,7 @@ export async function GET() {
     // Try to create a DynamoDB client and test basic operations
     const { DynamoDBClient } = await import('@aws-sdk/client-dynamodb');
     
-    let testResults = [];
+    const testResults = [];
     
     // Test 1: Basic client creation
     try {
@@ -42,8 +42,8 @@ export async function GET() {
       testResults.push({ 
         test: 'list_tables', 
         status: 'success', 
-        tableCount: (result as any).TableNames?.length || 0,
-        tables: (result as any).TableNames || []
+        tableCount: (result as { TableNames?: string[] }).TableNames?.length || 0,
+        tables: (result as { TableNames?: string[] }).TableNames || []
       });
       
     } catch (err) {

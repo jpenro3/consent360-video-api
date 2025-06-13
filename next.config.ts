@@ -14,9 +14,7 @@ const nextConfig: NextConfig = {
     AWS_REGION: process.env.AWS_REGION,
   },
   // Ensure proper SSR with Lambda
-  experimental: {
-    serverComponentsExternalPackages: ['@aws-sdk/client-dynamodb']
-  }
+  // Note: serverComponentsExternalPackages moved to root level serverExternalPackages
 };
 
 export default nextConfig;
