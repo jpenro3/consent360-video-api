@@ -2,18 +2,34 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
+    // Get ALL environment variables to see what's actually available
+    const allEnvVars = process.env;
+    
+    // Filter for AWS/Amplify/API related vars
+    const relevantVars: Record<string, string> = {};
+    Object.keys(allEnvVars).forEach(key => {
+      if (
+        key.includes('AWS') || 
+        key.includes('AMPLIFY') || 
+        key.includes('VALID') || 
+        key.includes('VIDEO') || 
+        key.includes('NEXT') ||
+        key.includes('API')
+      ) {
+        relevantVars[key] = allEnvVars[key] || 'undefined';
+      }
+    });
+
     return NextResponse.json({
       success: true,
-      environment: {
-        NODE_ENV: process.env.NODE_ENV,
-        AWS_REGION: process.env.AWS_REGION,
-        NEXT_PUBLIC_AWS_REGION: process.env.NEXT_PUBLIC_AWS_REGION,
-        AWS_EXECUTION_ENV: process.env.AWS_EXECUTION_ENV,
-        AWS_LAMBDA_FUNCTION_NAME: process.env.AWS_LAMBDA_FUNCTION_NAME,
-        VALID_API_KEYS: process.env.VALID_API_KEYS ? 'SET' : 'NOT SET',
-        VALID_API_KEYS_LENGTH: process.env.VALID_API_KEYS?.length || 0,
-        VIDEOS_TABLE_NAME: process.env.VIDEOS_TABLE_NAME || 'NOT SET'
+      specificVars: {
+        VALID_API_KEYS: process.env.VALID_API_KEYS || 'NOT-SET',
+        VIDEOS_TABLE_NAME: process.env.VIDEOS_TABLE_NAME || 'NOT-SET',
+        AWS_REGION: process.env.AWS_REGION || 'not-set',
+        NEXT_PUBLIC_AWS_REGION: process.env.NEXT_PUBLIC_AWS_REGION || 'not-set',
       },
+      allRelevantVars: relevantVars,
+      totalEnvCount: Object.keys(allEnvVars).length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
