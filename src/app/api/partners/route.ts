@@ -56,8 +56,9 @@ async function getPartners() {
     }
     
     const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
+    const tableName = process.env.PARTNERS_TABLE_NAME || 'pipeline-partners';
     const result = await docClient.send(new ScanCommand({
-      TableName: 'partners'
+      TableName: tableName
     }));
     
     console.log('✅ Partners retrieved from DynamoDB');

@@ -57,8 +57,9 @@ async function validateApiKey(apiKey: string): Promise<boolean> {
     }
     
     const { GetCommand } = await import('@aws-sdk/lib-dynamodb');
+    const tableName = process.env.PARTNERS_TABLE_NAME || 'pipeline-partners';
     const result = await docClient.send(new GetCommand({
-      TableName: 'partners',
+      TableName: tableName,
       Key: { apiKey }
     }));
     
@@ -81,8 +82,9 @@ async function getVideos() {
     }
     
     const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
+    const tableName = process.env.VIDEOS_TABLE_NAME || 'pipeline-videos';
     const result = await docClient.send(new ScanCommand({
-      TableName: 'videos',
+      TableName: tableName,
       FilterExpression: '#status = :status',
       ExpressionAttributeNames: {
         '#status': 'status'
