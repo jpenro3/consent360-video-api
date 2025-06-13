@@ -331,6 +331,7 @@ export default function Home() {
               {[
                 { endpoint: 'debug/env', title: '🔍 Environment Check', description: 'Check environment variables', requiresAuth: false },
                 { endpoint: 'test-credentials', title: '🔑 Credentials Test', description: 'Test AWS credentials', requiresAuth: false },
+                { endpoint: 'debug/tables', title: '🗃️ Table Inspector', description: 'Inspect DynamoDB table data', requiresAuth: true, isAdmin: true },
                 { endpoint: 'videos/published', title: '🎬 Videos API', description: 'Fetch published videos', requiresAuth: true },
                 { endpoint: 'partners', title: '🤝 Partners API', description: 'Fetch partners (admin)', requiresAuth: true, isAdmin: true }
               ].map((test) => (
