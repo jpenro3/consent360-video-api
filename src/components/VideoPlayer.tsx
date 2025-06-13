@@ -146,7 +146,7 @@ export default function VideoPlayer({ video, onClose }: VideoPlayerProps) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, onClose]); // Added dependencies
+  }, [isPlaying, onClose, toggleFullscreen, togglePlay]); // Added all dependencies
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
