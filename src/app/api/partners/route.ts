@@ -5,6 +5,11 @@ export const dynamic = 'force-dynamic';
 // Utility function to check if AWS credentials are available
 async function hasAwsCredentials(): Promise<boolean> {
   try {
+    // Check for custom Amplify environment variables first
+    if (process.env.CONSENT360_ACCESS_KEY_ID && process.env.CONSENT360_SECRET_ACCESS_KEY) {
+      return true;
+    }
+    
     const { fromNodeProviderChain } = await import('@aws-sdk/credential-providers');
     const credentialProvider = fromNodeProviderChain();
     const credentials = await credentialProvider();
@@ -22,8 +27,18 @@ async function createDynamoClient() {
     
     const region = process.env.AWS_REGION || 'us-east-2';
     
-    // Try to create client with automatic credential detection
-    const client = new DynamoDBClient({ region });
+    // Configure credentials for Amplify environment
+    let clientConfig: any = { region };
+    
+    if (process.env.CONSENT360_ACCESS_KEY_ID && process.env.CONSENT360_SECRET_ACCESS_KEY) {
+      clientConfig.credentials = {
+        accessKeyId: process.env.CONSENT360_ACCESS_KEY_ID,
+        secretAccessKey: process.env.CONSENT360_SECRET_ACCESS_KEY
+      };
+      console.log('✅ Using custom Amplify credentials');
+    }
+    
+    const client = new DynamoDBClient(clientConfig);
     const docClient = DynamoDBDocumentClient.from(client);
     
     // Test if credentials work by doing a simple operation
