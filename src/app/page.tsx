@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import VideoCard from '../components/VideoCard';
+import VideoUpload from '../components/VideoUpload';
 
 interface Video {
   id: string;
@@ -175,7 +177,7 @@ export default function Home() {
         {/* Videos Tab */}
         {activeTab === 'videos' && (
           <div className="space-y-6">
-            {/* API Key Input */}
+            {/* API Key Input & Upload Button */}
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-medium mb-4">🔑 API Configuration</h3>
               <div className="flex gap-4 items-end">
@@ -198,61 +200,29 @@ export default function Home() {
                 >
                   {loading ? '⏳ Loading...' : '🔄 Fetch Videos'}
                 </button>
+                <VideoUpload 
+                  apiKey={adminApiKey || apiKey} 
+                  onUploadComplete={() => testApi('videos/published', apiKey)}
+                />
               </div>
             </div>
 
             {/* Videos Grid */}
             {videos.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {videos.map((video) => (
-                  <div key={video.id} className="bg-white rounded-lg shadow overflow-hidden">
-                    <div className="aspect-video bg-gray-200 flex items-center justify-center">
-                      <span className="text-4xl">🎥</span>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-2">{video.title}</h3>
-                      <p className="text-gray-600 text-sm mb-3">{video.description}</p>
-                      
-                      <div className="space-y-2 text-xs text-gray-500">
-                        <div className="flex justify-between">
-                          <span>Duration:</span>
-                          <span>{formatDuration(video.duration)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Specialty:</span>
-                          <span className="capitalize">{video.specialty}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Status:</span>
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            video.status === 'published' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {video.status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Created:</span>
-                          <span>{formatDate(video.createdAt)}</span>
-                        </div>
-                      </div>
-                      
-                      {video.tags && video.tags.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1">
-                          {video.tags.map((tag, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">
+                    📺 Video Library ({videos.length} videos)
+                  </h3>
+                  <div className="text-sm text-gray-500">
+                    {apiStatus?.credentials?.environment?.hasAccessKey ? '🔗 Live Data' : '🔄 Mock Data'}
                   </div>
-                ))}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {videos.map((video) => (
+                    <VideoCard key={video.id} video={video} />
+                  ))}
+                </div>
               </div>
             )}
           </div>
