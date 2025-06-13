@@ -25,7 +25,7 @@ async function generateUploadUrl(fileName: string, fileType: string): Promise<{ 
     const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
     const { PutObjectCommand } = await import('@aws-sdk/client-s3');
     
-    const bucketName = process.env.AWS_S3_BUCKET_NAME || 'consent360-videos-bucket';
+    const bucketName = process.env.S3_BUCKET_NAME || 'consent360-dev';
     const key = `videos/${Date.now()}-${fileName}`;
     
     const command = new PutObjectCommand({

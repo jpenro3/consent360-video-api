@@ -99,7 +99,7 @@ async function getVideos() {
     
     // Transform the real data to match our frontend interface
     const transformedVideos = (result.Items || []).map(item => {
-      const bucketName = process.env.AWS_S3_BUCKET_NAME || 'consent360-dev';
+      const bucketName = process.env.S3_BUCKET_NAME || 'consent360-dev';
       const region = process.env.AWS_REGION || 'us-east-2';
       
       // Generate S3 URLs for the video and thumbnail
