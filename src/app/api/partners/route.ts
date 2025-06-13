@@ -28,7 +28,7 @@ async function createDynamoClient() {
     const region = process.env.AWS_REGION || 'us-east-2';
     
     // Configure credentials for Amplify environment
-    let clientConfig: any = { region };
+    const clientConfig: any = { region };
     
     if (process.env.CONSENT360_ACCESS_KEY_ID && process.env.CONSENT360_SECRET_ACCESS_KEY) {
       clientConfig.credentials = {
