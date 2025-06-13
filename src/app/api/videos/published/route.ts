@@ -85,8 +85,9 @@ async function getVideos() {
     const tableName = process.env.VIDEOS_TABLE_NAME || 'pipeline-videos';
     const result = await docClient.send(new ScanCommand({
       TableName: tableName,
-      FilterExpression: '#status = :status',
+      FilterExpression: '#metadata.#status = :status',
       ExpressionAttributeNames: {
+        '#metadata': 'metadata',
         '#status': 'status'
       },
       ExpressionAttributeValues: {
@@ -95,7 +96,35 @@ async function getVideos() {
     }));
     
     console.log('✅ Videos retrieved from DynamoDB');
-    return result.Items || [];
+    
+    // Transform the real data to match our frontend interface
+    const transformedVideos = (result.Items || []).map(item => {
+      const bucketName = process.env.AWS_S3_BUCKET_NAME || 'consent360-dev';
+      const region = process.env.AWS_REGION || 'us-east-2';
+      
+      // Generate S3 URLs for the video and thumbnail
+      const videoUrl = item.url 
+        ? `https://${bucketName}.s3.${region}.amazonaws.com/uploads/videos/consent/${item.filename}`
+        : null;
+      
+      const thumbnailUrl = item.metadata?.thumbnailUrl || 
+        (item.filename ? `https://${bucketName}.s3.${region}.amazonaws.com/uploads/videos/consent/${item.filename.replace('.mp4', '.jpg')}` : null);
+      
+      return {
+        id: item.id || 'unknown',
+        title: item.title || item.filename || 'Untitled Video',
+        description: item.description || `${item.presenter || 'Unknown'} - ${item.type || 'Video'}`,
+        videoUrl: videoUrl || '',
+        thumbnailUrl: thumbnailUrl || '',
+        duration: parseInt(item.metadata?.duration) || 0,
+        createdAt: item.createdAt || new Date().toISOString(),
+        status: item.metadata?.status || 'published',
+        specialty: item.specialty || 'general',
+        tags: [item.type || 'consent', item.metadata?.language || 'en']
+      };
+    });
+    
+    return transformedVideos;
   } catch (error) {
     console.log('⚠️ DynamoDB query failed, using mock data:', error);
     return getMockVideos();

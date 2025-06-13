@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     AWS_S3_BUCKET_NAME: process.env.AWS_S3_BUCKET_NAME,
     NEXT_PUBLIC_AWS_REGION: process.env.NEXT_PUBLIC_AWS_REGION,
     AWS_REGION: process.env.AWS_REGION,
+    AWS_PROFILE: process.env.AWS_PROFILE,
   },
   // Ensure proper SSR with Lambda
   // Note: serverComponentsExternalPackages moved to root level serverExternalPackages

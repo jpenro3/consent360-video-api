@@ -13,7 +13,7 @@ import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 
 const REGION = 'us-east-2';
 const VIDEOS_TABLE = 'pipeline-videos';
-const PARTNERS_TABLE = 'pipeline-partners';
+const PARTNERS_TABLE = 'pipeline-api-partners';
 
 async function main() {
   console.log('🔍 Checking DynamoDB tables...\n');
