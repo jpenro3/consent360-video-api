@@ -114,17 +114,52 @@ async function getVideos() {
     console.log('✅ Videos retrieved from DynamoDB');
     
     // Transform the real data to match our frontend interface
-    const transformedVideos = (result.Items || []).map(item => {
+    const transformedVideos = await Promise.all((result.Items || []).map(async (item) => {
       const bucketName = process.env.S3_BUCKET_NAME || 'consent360-dev';
       const region = process.env.AWS_REGION || 'us-east-2';
       
-      // Generate S3 URLs for the video and thumbnail
-      const videoUrl = item.url 
-        ? `https://${bucketName}.s3.${region}.amazonaws.com/uploads/videos/consent/${item.filename}`
-        : null;
+      let videoUrl = '';
+      let thumbnailUrl = '';
       
-      const thumbnailUrl = item.metadata?.thumbnailUrl || 
-        (item.filename ? `https://${bucketName}.s3.${region}.amazonaws.com/uploads/videos/consent/${item.filename.replace('.mp4', '.jpg')}` : null);
+      if (item.filename) {
+        try {
+          // Create S3 client with custom credentials
+          const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+          const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+          
+          const s3Client = new S3Client({
+            region,
+            credentials: {
+              accessKeyId: process.env.CONSENT360_ACCESS_KEY_ID || '',
+              secretAccessKey: process.env.CONSENT360_SECRET_ACCESS_KEY || ''
+            }
+          });
+          
+          // Generate signed URL for video (valid for 1 hour)
+          const videoKey = `uploads/videos/consent/${item.filename}`;
+          const videoCommand = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: videoKey
+          });
+          videoUrl = await getSignedUrl(s3Client, videoCommand, { expiresIn: 3600 });
+          
+          // Generate signed URL for thumbnail if it exists
+          const thumbnailKey = `uploads/videos/consent/${item.filename.replace('.mp4', '.jpg')}`;
+          const thumbnailCommand = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: thumbnailKey
+          });
+          thumbnailUrl = await getSignedUrl(s3Client, thumbnailCommand, { expiresIn: 3600 });
+          
+          console.log(`✅ Generated signed URLs for ${item.filename}`);
+          
+        } catch (signedUrlError) {
+          console.log('⚠️ Failed to generate signed URLs:', signedUrlError);
+          // Fallback to direct URLs (won't work for private buckets)
+          videoUrl = `https://${bucketName}.s3.${region}.amazonaws.com/uploads/videos/consent/${item.filename}`;
+          thumbnailUrl = item.metadata?.thumbnailUrl || `https://${bucketName}.s3.${region}.amazonaws.com/uploads/videos/consent/${item.filename.replace('.mp4', '.jpg')}`;
+        }
+      }
       
       return {
         id: item.id || 'unknown',
@@ -138,7 +173,7 @@ async function getVideos() {
         specialty: item.specialty || 'general',
         tags: [item.type || 'consent', item.metadata?.language || 'en']
       };
-    });
+    }));
     
     return transformedVideos;
   } catch (error) {
